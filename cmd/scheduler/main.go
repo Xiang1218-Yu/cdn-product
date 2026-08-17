@@ -57,7 +57,7 @@ func main() {
 		logger.Fatal("failed to start scheduler", zap.Error(err))
 	}
 
-	apiServer := api.NewServer(&cfg.Server.Scheduler, mongoStore, logger)
+	apiServer := api.NewServer(&cfg.Server.Scheduler, mongoStore, logger, schedulerEngine)
 
 	go func() {
 		if err := apiServer.Start(); err != nil {

@@ -46,6 +46,23 @@ func NewSchedulerEngine(
 	}
 }
 
+func (se *SchedulerEngine) RegisterTask(t *task.Task) error {
+	if t.CronExpr == "" {
+		return nil
+	}
+	if err := se.dag.AddTask(t); err != nil {
+		return err
+	}
+	return se.cronScheduler.ScheduleTask(t, func() {
+		go se.executeTask(context.Background(), t)
+	})
+}
+
+func (se *SchedulerEngine) UnregisterTask(taskID string) error {
+	se.cronScheduler.UnscheduleTask(taskID)
+	return se.dag.RemoveTask(taskID)
+}
+
 func (se *SchedulerEngine) Start(ctx context.Context) error {
 	se.cronScheduler.Start()
 

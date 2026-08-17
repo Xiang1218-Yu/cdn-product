@@ -11,15 +11,22 @@ import (
 	"github.com/scheduler/pkg/task"
 )
 
-type Handler struct {
-	store  store.Store
-	logger *zap.Logger
+type TaskRegistry interface {
+	RegisterTask(*task.Task) error
+	UnregisterTask(string) error
 }
 
-func NewHandler(store store.Store, logger *zap.Logger) *Handler {
+type Handler struct {
+	store     store.Store
+	registry  TaskRegistry
+	logger    *zap.Logger
+}
+
+func NewHandler(store store.Store, registry TaskRegistry, logger *zap.Logger) *Handler {
 	return &Handler{
-		store:  store,
-		logger: logger,
+		store:    store,
+		registry: registry,
+		logger:   logger,
 	}
 }
 
@@ -43,6 +50,13 @@ func (h *Handler) CreateTask(w http.ResponseWriter, r *http.Request) {
 		h.logger.Error("failed to save task", zap.Error(err))
 		h.writeError(w, http.StatusInternalServerError, "failed to create task")
 		return
+	}
+	if h.registry != nil {
+		if err := h.registry.RegisterTask(t); err != nil {
+			h.logger.Error("failed to register task with scheduler", zap.Error(err))
+			h.writeError(w, http.StatusInternalServerError, "failed to register task")
+			return
+		}
 	}
 
 	h.writeJSON(w, http.StatusCreated, t)
@@ -87,6 +101,13 @@ func (h *Handler) DeleteTask(w http.ResponseWriter, r *http.Request) {
 		h.logger.Error("failed to delete task", zap.Error(err))
 		h.writeError(w, http.StatusInternalServerError, "failed to delete task")
 		return
+	}
+	if h.registry != nil {
+		if err := h.registry.UnregisterTask(taskID); err != nil {
+			h.logger.Error("failed to unregister task from scheduler", zap.Error(err))
+			h.writeError(w, http.StatusInternalServerError, "failed to unregister task")
+			return
+		}
 	}
 
 	h.writeJSON(w, http.StatusOK, map[string]string{"message": "task deleted"})

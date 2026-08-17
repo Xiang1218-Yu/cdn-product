@@ -49,6 +49,18 @@ func (d *DAG) AddTask(task *Task) error {
 	return nil
 }
 
+func (d *DAG) RemoveTask(id string) error {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	if _, exists := d.nodes[id]; !exists {
+		return ErrTaskNotFound
+	}
+	delete(d.nodes, id)
+	delete(d.edges, id)
+	return nil
+}
+
 func (d *DAG) GetTask(id string) (*Task, error) {
 	d.mu.RLock()
 	defer d.mu.RUnlock()
