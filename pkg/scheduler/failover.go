@@ -50,8 +50,8 @@ func (fm *FailoverManager) CompleteExecution(taskID string) {
 }
 
 func (fm *FailoverManager) HandleExecutorFailure(ctx context.Context, executorID string, dag *task.DAG, executorPool *ExecutorPool) {
-	fm.mu.RLock()
-	defer fm.mu.RUnlock()
+	fm.mu.Lock()
+	defer fm.mu.Unlock()
 
 	for taskID, execution := range fm.runningTasks {
 		if execution.ExecutorID == executorID {
@@ -63,12 +63,19 @@ func (fm *FailoverManager) HandleExecutorFailure(ctx context.Context, executorID
 			dag.UpdateTaskStatus(taskID, task.StatusPending)
 
 			newExecutor := executorPool.SelectExecutor(taskID)
-			if newExecutor != nil {
-				fm.logger.Info("reassigning task to new executor",
+			if newExecutor == nil {
+				fm.logger.Warn("no executor available for failed task",
 					zap.String("task_id", taskID),
-					zap.String("new_executor_id", newExecutor.ID),
 				)
+				continue
 			}
+
+			execution.ExecutorID = newExecutor.ID
+			execution.LastUpdate = time.Now()
+			fm.logger.Info("reassigning task to new executor",
+				zap.String("task_id", taskID),
+				zap.String("new_executor_id", newExecutor.ID),
+			)
 		}
 	}
 }
