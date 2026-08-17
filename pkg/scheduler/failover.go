@@ -60,6 +60,7 @@ func (fm *FailoverManager) HandleExecutorFailure(ctx context.Context, executorID
 				zap.String("executor_id", executorID),
 			)
 
+			executorPool.ReleaseExecutor(taskID)
 			dag.UpdateTaskStatus(taskID, task.StatusPending)
 
 			newExecutor := executorPool.SelectExecutor(taskID)

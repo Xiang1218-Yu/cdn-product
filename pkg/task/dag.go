@@ -119,15 +119,18 @@ func (d *DAG) detectCycle(nodeID string, visited, recStack map[string]bool) bool
 	return false
 }
 
-// ClaimReadyTask returns a ready task to the scheduler before it starts execution.
+// ClaimReadyTask atomically changes a ready task to running so that concurrent
+// scheduler ticks cannot dispatch the same task twice.
 func (d *DAG) ClaimReadyTask(taskID string) (*Task, bool) {
-	d.mu.RLock()
-	defer d.mu.RUnlock()
+	d.mu.Lock()
+	defer d.mu.Unlock()
 
 	task, exists := d.nodes[taskID]
 	if !exists || task.Status != StatusPending || !d.areDependenciesMet(taskID) {
 		return nil, false
 	}
+	task.Status = StatusRunning
+	task.UpdatedAt = time.Now()
 	return task, true
 }
 
