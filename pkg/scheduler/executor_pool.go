@@ -84,6 +84,15 @@ func (ep *ExecutorPool) CleanupDeadExecutors(timeout time.Duration) {
 	}
 }
 
+// AcquireExecutor chooses a candidate for a task. The scheduler calls ReleaseExecutor
+// after the execution attempt has finished.
+func (ep *ExecutorPool) AcquireExecutor(taskID string) *Executor {
+	return ep.SelectExecutor(taskID)
+}
+
+func (ep *ExecutorPool) ReleaseExecutor(taskID string) {
+}
+
 func (ep *ExecutorPool) Execute(ctx context.Context, t *task.Task) (*ExecutionResult, error) {
 	return nil, nil
 }

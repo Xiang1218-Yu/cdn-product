@@ -109,7 +109,9 @@ func (se *SchedulerEngine) scheduleTasks(ctx context.Context) {
 			readyTasks := se.dag.GetReadyTasks()
 			for _, t := range readyTasks {
 				if se.shouldHandleTask(t.ID) {
-					go se.executeTask(ctx, t)
+					if claimed, ok := se.dag.ClaimReadyTask(t.ID); ok {
+						go se.executeTask(ctx, claimed)
+					}
 				}
 			}
 		}
@@ -136,14 +138,13 @@ func (se *SchedulerEngine) getNodeIndex() int {
 }
 
 func (se *SchedulerEngine) executeTask(ctx context.Context, t *task.Task) {
-	se.dag.UpdateTaskStatus(t.ID, task.StatusRunning)
-
-	executor := se.executorPool.SelectExecutor(t.ID)
+	executor := se.executorPool.AcquireExecutor(t.ID)
 	if executor == nil {
 		se.logger.Error("no available executor", zap.String("task_id", t.ID))
 		se.dag.UpdateTaskStatus(t.ID, task.StatusFailed)
 		return
 	}
+	defer se.executorPool.ReleaseExecutor(t.ID)
 
 	result, err := se.executorPool.Execute(ctx, t)
 	if err != nil {

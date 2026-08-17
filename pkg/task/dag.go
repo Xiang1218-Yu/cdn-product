@@ -119,6 +119,18 @@ func (d *DAG) detectCycle(nodeID string, visited, recStack map[string]bool) bool
 	return false
 }
 
+// ClaimReadyTask returns a ready task to the scheduler before it starts execution.
+func (d *DAG) ClaimReadyTask(taskID string) (*Task, bool) {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+
+	task, exists := d.nodes[taskID]
+	if !exists || task.Status != StatusPending || !d.areDependenciesMet(taskID) {
+		return nil, false
+	}
+	return task, true
+}
+
 func (d *DAG) UpdateTaskStatus(taskID string, status TaskStatus) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
