@@ -53,6 +53,9 @@ func (h *Handler) CreateTask(w http.ResponseWriter, r *http.Request) {
 	}
 	if h.registry != nil {
 		if err := h.registry.RegisterTask(t); err != nil {
+			if rollbackErr := h.store.DeleteTask(r.Context(), t.ID); rollbackErr != nil {
+				h.logger.Error("failed to roll back persisted task", zap.String("task_id", t.ID), zap.Error(rollbackErr))
+			}
 			h.logger.Error("failed to register task with scheduler", zap.Error(err))
 			h.writeError(w, http.StatusInternalServerError, "failed to register task")
 			return
@@ -97,17 +100,17 @@ func (h *Handler) DeleteTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.store.DeleteTask(r.Context(), taskID); err != nil {
-		h.logger.Error("failed to delete task", zap.Error(err))
-		h.writeError(w, http.StatusInternalServerError, "failed to delete task")
-		return
-	}
 	if h.registry != nil {
 		if err := h.registry.UnregisterTask(taskID); err != nil {
 			h.logger.Error("failed to unregister task from scheduler", zap.Error(err))
 			h.writeError(w, http.StatusInternalServerError, "failed to unregister task")
 			return
 		}
+	}
+	if err := h.store.DeleteTask(r.Context(), taskID); err != nil {
+		h.logger.Error("failed to delete task", zap.Error(err))
+		h.writeError(w, http.StatusInternalServerError, "failed to delete task")
+		return
 	}
 
 	h.writeJSON(w, http.StatusOK, map[string]string{"message": "task deleted"})

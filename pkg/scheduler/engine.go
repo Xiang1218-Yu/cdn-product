@@ -47,15 +47,21 @@ func NewSchedulerEngine(
 }
 
 func (se *SchedulerEngine) RegisterTask(t *task.Task) error {
-	if t.CronExpr == "" {
-		return nil
-	}
 	if err := se.dag.AddTask(t); err != nil {
 		return err
 	}
-	return se.cronScheduler.ScheduleTask(t, func() {
+	if t.CronExpr == "" {
+		return nil
+	}
+	if err := se.cronScheduler.ScheduleTask(t, func() {
 		go se.executeTask(context.Background(), t)
-	})
+	}); err != nil {
+		if rollbackErr := se.dag.RemoveTask(t.ID); rollbackErr != nil {
+			se.logger.Error("failed to roll back unscheduled task", zap.String("task_id", t.ID), zap.Error(rollbackErr))
+		}
+		return err
+	}
+	return nil
 }
 
 func (se *SchedulerEngine) UnregisterTask(taskID string) error {

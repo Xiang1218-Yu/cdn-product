@@ -32,7 +32,7 @@ func main() {
 	}
 	defer mongoStore.Close(context.Background())
 
-	apiServer := api.NewServer(&cfg.Server.Scheduler, mongoStore, logger)
+	apiServer := api.NewServer(&cfg.Server.Scheduler, mongoStore, logger, nil)
 
 	logger.Info("starting admin server")
 

@@ -58,6 +58,15 @@ func (d *DAG) RemoveTask(id string) error {
 	}
 	delete(d.nodes, id)
 	delete(d.edges, id)
+	for dependentID, dependencies := range d.edges {
+		filtered := dependencies[:0]
+		for _, dependencyID := range dependencies {
+			if dependencyID != id {
+				filtered = append(filtered, dependencyID)
+			}
+		}
+		d.edges[dependentID] = filtered
+	}
 	return nil
 }
 

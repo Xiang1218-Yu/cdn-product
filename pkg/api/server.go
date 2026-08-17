@@ -18,11 +18,7 @@ type Server struct {
 	logger     *zap.Logger
 }
 
-func NewServer(cfg *config.SchedulerConfig, store store.Store, logger *zap.Logger, registries ...TaskRegistry) *Server {
-	var registry TaskRegistry
-	if len(registries) > 0 {
-		registry = registries[0]
-	}
+func NewServer(cfg *config.SchedulerConfig, store store.Store, logger *zap.Logger, registry TaskRegistry) *Server {
 	handler := NewHandler(store, registry, logger)
 
 	mux := http.NewServeMux()
