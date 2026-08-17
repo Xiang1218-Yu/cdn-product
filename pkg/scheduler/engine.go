@@ -47,11 +47,15 @@ func NewSchedulerEngine(
 }
 
 func (se *SchedulerEngine) RegisterTask(t *task.Task) error {
-	if t.CronExpr == "" {
-		return nil
-	}
+	// All tasks — including manual (no cron) ones created via the API — must
+	// live in the DAG so that scheduleTasks can pick them up from the ready
+	// queue. A task without a cron expression is simply not scheduled on the
+	// cron loop; it still runs once when it becomes ready.
 	if err := se.dag.AddTask(t); err != nil {
 		return err
+	}
+	if t.CronExpr == "" {
+		return nil
 	}
 	return se.cronScheduler.ScheduleTask(t, func() {
 		go se.executeTask(context.Background(), t)
