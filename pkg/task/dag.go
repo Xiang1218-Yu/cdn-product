@@ -29,20 +29,23 @@ func (d *DAG) AddTask(task *Task) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
+	previousTask, hadTask := d.nodes[task.ID]
+	previousEdges, hadEdges := d.edges[task.ID]
+	stagedEdges := append([]string(nil), task.DependsOn...)
+
 	d.nodes[task.ID] = task
-	if _, exists := d.edges[task.ID]; !exists {
-		d.edges[task.ID] = []string{}
-	}
-
-	if len(task.DependsOn) > 0 {
-		for _, depID := range task.DependsOn {
-			d.edges[task.ID] = append(d.edges[task.ID], depID)
-		}
-	}
-
+	d.edges[task.ID] = stagedEdges
 	if d.hasCycle() {
-		delete(d.nodes, task.ID)
-		delete(d.edges, task.ID)
+		if hadTask {
+			d.nodes[task.ID] = previousTask
+		} else {
+			delete(d.nodes, task.ID)
+		}
+		if hadEdges {
+			d.edges[task.ID] = previousEdges
+		} else {
+			delete(d.edges, task.ID)
+		}
 		return ErrCycleDependency
 	}
 
