@@ -77,15 +77,20 @@ func (se *SchedulerEngine) electLeader(ctx context.Context) {
 			se.isLeader = true
 			se.mu.Unlock()
 
-			go func() {
+			go func(lease lock.Lease) {
 				select {
 				case <-ctx.Done():
-					se.lock.ReleaseLock(mutex)
 				case <-time.After(8 * time.Second):
-					se.lock.ReleaseLock(mutex)
 				}
-			}()
+				se.releaseLeadership(lease)
+			}(mutex)
 		}
+	}
+}
+
+func (se *SchedulerEngine) releaseLeadership(lease lock.Lease) {
+	if err := lease.Release(); err != nil {
+		se.logger.Error("failed to release leader lease", zap.Error(err))
 	}
 }
 

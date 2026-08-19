@@ -1,16 +1,15 @@
 package lock
 
-import (
-	"context"
+import "context"
 
-	"go.etcd.io/etcd/client/v3/concurrency"
-)
+// Lease represents one acquired distributed leadership lease.
+type Lease interface {
+	Release() error
+}
 
 // Lock defines the distributed lock interface used by the scheduler.
 type Lock interface {
-	AcquireLock(ctx context.Context, key string, ttl int) (*concurrency.Mutex, error)
-	ReleaseLock(mutex *concurrency.Mutex) error
-	TryLock(ctx context.Context, key string, ttl int) (*concurrency.Mutex, error)
+	TryLock(ctx context.Context, key string, ttl int) (Lease, error)
 	Close() error
 }
 

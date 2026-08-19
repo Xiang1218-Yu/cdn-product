@@ -14,6 +14,15 @@ type EtcdLock struct {
 	logger *zap.Logger
 }
 
+type etcdLease struct {
+	mutex   *concurrency.Mutex
+	session *concurrency.Session
+}
+
+func (lease *etcdLease) Release() error {
+	return lease.mutex.Unlock(context.Background())
+}
+
 func NewEtcdLock(endpoints []string, dialTimeout time.Duration, logger *zap.Logger) (*EtcdLock, error) {
 	cli, err := clientv3.New(clientv3.Config{
 		Endpoints:   endpoints,
@@ -29,25 +38,7 @@ func NewEtcdLock(endpoints []string, dialTimeout time.Duration, logger *zap.Logg
 	}, nil
 }
 
-func (l *EtcdLock) AcquireLock(ctx context.Context, key string, ttl int) (*concurrency.Mutex, error) {
-	session, err := concurrency.NewSession(l.client, concurrency.WithTTL(ttl))
-	if err != nil {
-		return nil, err
-	}
-
-	mutex := concurrency.NewMutex(session, key)
-	if err := mutex.Lock(ctx); err != nil {
-		return nil, err
-	}
-
-	return mutex, nil
-}
-
-func (l *EtcdLock) ReleaseLock(mutex *concurrency.Mutex) error {
-	return mutex.Unlock(context.Background())
-}
-
-func (l *EtcdLock) TryLock(ctx context.Context, key string, ttl int) (*concurrency.Mutex, error) {
+func (l *EtcdLock) TryLock(ctx context.Context, key string, ttl int) (Lease, error) {
 	session, err := concurrency.NewSession(l.client, concurrency.WithTTL(ttl))
 	if err != nil {
 		return nil, err
@@ -55,10 +46,11 @@ func (l *EtcdLock) TryLock(ctx context.Context, key string, ttl int) (*concurren
 
 	mutex := concurrency.NewMutex(session, key)
 	if err := mutex.TryLock(ctx); err != nil {
+		_ = session.Close()
 		return nil, err
 	}
 
-	return mutex, nil
+	return &etcdLease{mutex: mutex, session: session}, nil
 }
 
 func (l *EtcdLock) Close() error {
