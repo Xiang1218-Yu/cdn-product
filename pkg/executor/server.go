@@ -70,7 +70,14 @@ func (es *ExecutorServer) ExecuteTask(ctx context.Context, req *proto.TaskReques
 	)
 
 	startTime := time.Now()
-	output, err := es.taskRunner.Run(ctx, req.TaskId, req.Command, req.Params)
+	executionCtx := ctx
+	cancel := func() {}
+	if req.Timeout > 0 {
+		executionCtx, cancel = context.WithTimeout(ctx, time.Duration(req.Timeout))
+	}
+	defer cancel()
+
+	output, err := es.taskRunner.Run(executionCtx, req.TaskId, req.Command, req.Params)
 	duration := time.Since(startTime)
 
 	response := &proto.TaskResponse{

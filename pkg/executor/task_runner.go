@@ -2,6 +2,7 @@ package executor
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"time"
 )
@@ -47,8 +48,15 @@ func (tr *TaskRunner) Run(ctx context.Context, taskID, command string, params ma
 	defer tr.mu.Unlock()
 	running := tr.tasks[taskID]
 	if err != nil {
-		running.Status = "failed"
 		running.Error = err.Error()
+		switch {
+		case errors.Is(err, context.DeadlineExceeded):
+			running.Status = "timed_out"
+		case errors.Is(err, context.Canceled):
+			running.Status = "cancelled"
+		default:
+			running.Status = "failed"
+		}
 		return "", err
 	}
 	running.Status = "success"
