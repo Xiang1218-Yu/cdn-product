@@ -8,14 +8,14 @@ import (
 
 type CronScheduler struct {
 	parser cron.Parser
-	jobs   map[string]cron.EntryID
+	jobs   *cronJobRegistry
 	cron   *cron.Cron
 }
 
 func NewCronScheduler() *CronScheduler {
 	return &CronScheduler{
 		parser: cron.NewParser(cron.Second | cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow),
-		jobs:   make(map[string]cron.EntryID),
+		jobs:   newCronJobRegistry(),
 		cron:   cron.New(cron.WithParser(cron.NewParser(cron.Second | cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow))),
 	}
 }
@@ -34,14 +34,13 @@ func (cs *CronScheduler) ScheduleTask(task *Task, runFunc func()) error {
 		return err
 	}
 
-	cs.jobs[task.ID] = entryID
+	cs.jobs.add(task.ID, entryID)
 	return nil
 }
 
 func (cs *CronScheduler) UnscheduleTask(taskID string) {
-	if entryID, exists := cs.jobs[taskID]; exists {
+	if entryID, exists := cs.jobs.take(taskID); exists {
 		cs.cron.Remove(entryID)
-		delete(cs.jobs, taskID)
 	}
 }
 
