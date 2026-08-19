@@ -142,8 +142,6 @@ func (se *SchedulerEngine) getNodeIndex() int {
 }
 
 func (se *SchedulerEngine) executeTask(ctx context.Context, t *task.Task) {
-	se.dag.UpdateTaskStatus(t.ID, task.StatusRunning)
-
 	executor := se.executorPool.SelectExecutor(t.ID)
 	if executor == nil {
 		se.logger.Error("no available executor", zap.String("task_id", t.ID))
