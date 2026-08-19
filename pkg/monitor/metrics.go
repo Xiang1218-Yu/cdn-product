@@ -1,6 +1,7 @@
 package monitor
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -51,15 +52,32 @@ func NewMetrics() *Metrics {
 		}),
 	}
 
-	prometheus.MustRegister(
-		m.tasksTotal,
-		m.tasksSuccess,
-		m.tasksFailed,
-		m.tasksDuration,
-		m.executorsActive,
-		m.executorsLoad,
-		m.schedulerQueue,
-	)
+	// Register each collector individually so that a duplicate registration
+	// (e.g. when NewMetrics is called again in the same process, such as
+	// during tests or hot reloads) reuses the already-registered collector
+	// instead of panicking via MustRegister. The returned *Metrics always
+	// references collectors that back the same metric families exposed on the
+	// default registry, so existing usage behaviour is unchanged.
+	registerOrReuse := func(c prometheus.Collector) prometheus.Collector {
+		if err := prometheus.Register(c); err != nil {
+			var are prometheus.AlreadyRegisteredError
+			if errors.As(err, &are) {
+				return are.ExistingCollector
+			}
+			// Any other registration error is a real problem; fall back to
+			// MustRegister so it surfaces loudly rather than silently.
+			panic(err)
+		}
+		return c
+	}
+
+	m.tasksTotal = registerOrReuse(m.tasksTotal).(prometheus.Counter)
+	m.tasksSuccess = registerOrReuse(m.tasksSuccess).(prometheus.Counter)
+	m.tasksFailed = registerOrReuse(m.tasksFailed).(prometheus.Counter)
+	m.tasksDuration = registerOrReuse(m.tasksDuration).(prometheus.Histogram)
+	m.executorsActive = registerOrReuse(m.executorsActive).(prometheus.Gauge)
+	m.executorsLoad = registerOrReuse(m.executorsLoad).(prometheus.Gauge)
+	m.schedulerQueue = registerOrReuse(m.schedulerQueue).(prometheus.Gauge)
 
 	return m
 }
