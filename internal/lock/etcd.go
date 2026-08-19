@@ -2,6 +2,7 @@ package lock
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -20,7 +21,9 @@ type etcdLease struct {
 }
 
 func (lease *etcdLease) Release() error {
-	return lease.mutex.Unlock(context.Background())
+	unlockErr := lease.mutex.Unlock(context.Background())
+	closeErr := lease.session.Close()
+	return errors.Join(unlockErr, closeErr)
 }
 
 func NewEtcdLock(endpoints []string, dialTimeout time.Duration, logger *zap.Logger) (*EtcdLock, error) {

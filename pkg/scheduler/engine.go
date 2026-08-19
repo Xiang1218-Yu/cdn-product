@@ -92,6 +92,10 @@ func (se *SchedulerEngine) releaseLeadership(lease lock.Lease) {
 	if err := lease.Release(); err != nil {
 		se.logger.Error("failed to release leader lease", zap.Error(err))
 	}
+
+	se.mu.Lock()
+	se.isLeader = false
+	se.mu.Unlock()
 }
 
 func (se *SchedulerEngine) scheduleTasks(ctx context.Context) {
