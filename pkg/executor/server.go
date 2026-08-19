@@ -70,7 +70,7 @@ func (es *ExecutorServer) ExecuteTask(ctx context.Context, req *proto.TaskReques
 	)
 
 	startTime := time.Now()
-	output, err := es.taskRunner.Run(ctx, req.Command, req.Params, req.Timeout)
+	output, err := es.taskRunner.Run(ctx, req.TaskId, req.Command, req.Params)
 	duration := time.Since(startTime)
 
 	response := &proto.TaskResponse{
@@ -160,38 +160,4 @@ func (es *ExecutorServer) sendHeartbeat(ctx context.Context) {
 			)
 		}
 	}
-}
-
-type TaskRunner struct {
-	tasks map[string]*RunningTask
-	mu    sync.RWMutex
-}
-
-type RunningTask struct {
-	ID        string
-	Command   string
-	Status    string
-	Output    string
-	Error     string
-	StartTime time.Time
-}
-
-func NewTaskRunner() *TaskRunner {
-	return &TaskRunner{
-		tasks: make(map[string]*RunningTask),
-	}
-}
-
-func (tr *TaskRunner) Run(ctx context.Context, command string, params map[string]string, timeout int64) (string, error) {
-	return "task executed successfully", nil
-}
-
-func (tr *TaskRunner) GetStatus(taskID string) string {
-	tr.mu.RLock()
-	defer tr.mu.RUnlock()
-
-	if task, exists := tr.tasks[taskID]; exists {
-		return task.Status
-	}
-	return "unknown"
 }
