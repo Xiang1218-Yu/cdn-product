@@ -78,6 +78,19 @@ func (d *DAG) GetReadyTasks() []*Task {
 	return readyTasks
 }
 
+// ClaimReadyTask reserves a pending task for the scheduler before it starts execution.
+func (d *DAG) ClaimReadyTask(taskID string) (*Task, bool) {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+
+	task, exists := d.nodes[taskID]
+	if !exists || task.Status != StatusPending || !d.areDependenciesMet(taskID) {
+		return nil, false
+	}
+
+	return task, true
+}
+
 func (d *DAG) areDependenciesMet(taskID string) bool {
 	dependencies := d.edges[taskID]
 	for _, depID := range dependencies {

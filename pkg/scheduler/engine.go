@@ -108,9 +108,15 @@ func (se *SchedulerEngine) scheduleTasks(ctx context.Context) {
 
 			readyTasks := se.dag.GetReadyTasks()
 			for _, t := range readyTasks {
-				if se.shouldHandleTask(t.ID) {
-					go se.executeTask(ctx, t)
+				if !se.shouldHandleTask(t.ID) {
+					continue
 				}
+
+				if _, ready := se.dag.ClaimReadyTask(t.ID); !ready {
+					continue
+				}
+
+				go se.executeTask(ctx, t)
 			}
 		}
 	}
