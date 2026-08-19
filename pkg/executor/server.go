@@ -70,7 +70,7 @@ func (es *ExecutorServer) ExecuteTask(ctx context.Context, req *proto.TaskReques
 	)
 
 	startTime := time.Now()
-	output, err := es.taskRunner.Run(ctx, req.TaskId, req.Command, req.Params)
+	output, err := es.taskRunner.Run(ctx, req.TaskId, req.Command, req.Params, req.Timeout)
 	duration := time.Since(startTime)
 
 	response := &proto.TaskResponse{
@@ -80,9 +80,12 @@ func (es *ExecutorServer) ExecuteTask(ctx context.Context, req *proto.TaskReques
 
 	if err != nil {
 		response.Success = false
+		// Surface the timeout sentinel in the error string so callers can
+		// distinguish a deadline from a generic failure without an extra RPC.
 		response.Error = err.Error()
 		es.logger.Error("task execution failed",
 			zap.String("task_id", req.TaskId),
+			zap.String("status", es.taskRunner.GetStatus(req.TaskId)),
 			zap.Error(err),
 		)
 	} else {
