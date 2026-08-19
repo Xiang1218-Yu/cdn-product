@@ -20,46 +20,36 @@ type Metrics struct {
 
 func NewMetrics() *Metrics {
 	m := &Metrics{
-		tasksTotal: prometheus.NewCounter(prometheus.CounterOpts{
+		tasksTotal: registerMetric(prometheus.NewCounter(prometheus.CounterOpts{
 			Name: "scheduler_tasks_total",
 			Help: "Total number of tasks submitted",
-		}),
-		tasksSuccess: prometheus.NewCounter(prometheus.CounterOpts{
+		})).(prometheus.Counter),
+		tasksSuccess: registerMetric(prometheus.NewCounter(prometheus.CounterOpts{
 			Name: "scheduler_tasks_success_total",
 			Help: "Total number of successful tasks",
-		}),
-		tasksFailed: prometheus.NewCounter(prometheus.CounterOpts{
+		})).(prometheus.Counter),
+		tasksFailed: registerMetric(prometheus.NewCounter(prometheus.CounterOpts{
 			Name: "scheduler_tasks_failed_total",
 			Help: "Total number of failed tasks",
-		}),
-		tasksDuration: prometheus.NewHistogram(prometheus.HistogramOpts{
+		})).(prometheus.Counter),
+		tasksDuration: registerMetric(prometheus.NewHistogram(prometheus.HistogramOpts{
 			Name:    "scheduler_tasks_duration_seconds",
 			Help:    "Task execution duration in seconds",
 			Buckets: prometheus.DefBuckets,
-		}),
-		executorsActive: prometheus.NewGauge(prometheus.GaugeOpts{
+		})).(prometheus.Histogram),
+		executorsActive: registerMetric(prometheus.NewGauge(prometheus.GaugeOpts{
 			Name: "scheduler_executors_active",
 			Help: "Number of active executors",
-		}),
-		executorsLoad: prometheus.NewGauge(prometheus.GaugeOpts{
+		})).(prometheus.Gauge),
+		executorsLoad: registerMetric(prometheus.NewGauge(prometheus.GaugeOpts{
 			Name: "scheduler_executors_load",
 			Help: "Current load on executors",
-		}),
-		schedulerQueue: prometheus.NewGauge(prometheus.GaugeOpts{
+		})).(prometheus.Gauge),
+		schedulerQueue: registerMetric(prometheus.NewGauge(prometheus.GaugeOpts{
 			Name: "scheduler_queue_size",
 			Help: "Number of tasks in queue",
-		}),
+		})).(prometheus.Gauge),
 	}
-
-	prometheus.MustRegister(
-		m.tasksTotal,
-		m.tasksSuccess,
-		m.tasksFailed,
-		m.tasksDuration,
-		m.executorsActive,
-		m.executorsLoad,
-		m.schedulerQueue,
-	)
 
 	return m
 }
